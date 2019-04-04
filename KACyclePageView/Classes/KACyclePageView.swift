@@ -56,10 +56,10 @@ public class KACyclePageView: UIViewController {
         }
     }
     
-    private var scrollPostition: UICollectionViewScrollPosition {
+    private var scrollPostition: UICollectionView.ScrollPosition {
         get {
 //            return pageCount > MinCycleCellCount ? .CenteredHorizontally : .None
-            return .CenteredHorizontally
+            return .centeredHorizontally
         }
     }
     
@@ -77,10 +77,10 @@ public class KACyclePageView: UIViewController {
     //for after drag header
     var needScrollToCenter = false
     
-    public class func cyclePageView(dataSource dataSource: AnyObject) -> KACyclePageView {
-        let podBundle = NSBundle(forClass: self.classForCoder())
-        let bundleURL = podBundle.URLForResource("KACyclePageView", withExtension: "bundle")!
-        let bundle = NSBundle(URL: bundleURL)
+    public class func cyclePageView(dataSource: AnyObject) -> KACyclePageView {
+        let podBundle = Bundle(for: self.classForCoder())
+        let bundleURL = podBundle.url(forResource: "KACyclePageView", withExtension: "bundle")!
+        let bundle = Bundle(url: bundleURL)
         let storyboard = UIStoryboard(name: "KACyclePageView", bundle: bundle)
         let vc = storyboard.instantiateInitialViewController() as! KACyclePageView
 
@@ -94,23 +94,23 @@ public class KACyclePageView: UIViewController {
     override public func viewDidLoad() {
         super.viewDidLoad()
         
-        bottomBarViewLeft.active = false
-        bottomBarViewCenterH.active = true
+        bottomBarViewLeft.isActive = false
+        bottomBarViewCenterH.isActive = true
     }
 
-    override public func viewDidAppear(animated: Bool) {
+    override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        let indexPath = NSIndexPath(forItem: headerIndex, inSection: 0)
+        let indexPath = NSIndexPath(item: headerIndex, section: 0)
         
-        collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: scrollPostition, animated: false)
+        collectionView.scrollToItem(at: indexPath as IndexPath, at: scrollPostition, animated: false)
     }
     
     // MARK: - Navigation
 
-    override public func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+    public override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "SeguePageView" {
-            pageViewController = segue.destinationViewController as! KAPageViewController
+            pageViewController = segue.destination as? KAPageViewController
             pageViewController.pageDelegate = self
             pageViewController.pageCount = pageCount
             pageViewController.pageDataSource = dataSource
@@ -124,9 +124,9 @@ public class KACyclePageView: UIViewController {
             headerIndex += (index - pageIndex)
             pageIndex = index
 
-            let indexPath = NSIndexPath(forItem: headerIndex, inSection: 0)
+            let indexPath = NSIndexPath(item: headerIndex, section: 0)
 
-            collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: .CenteredHorizontally, animated: false)
+            collectionView.scrollToItem(at: indexPath as IndexPath, at: .centeredHorizontally, animated: false)
             collectionView.reloadData()
             
             collectionViewContentOffsetX = 0.0
@@ -141,13 +141,13 @@ public class KACyclePageView: UIViewController {
             return
         }
         
-        let currentIndexPath = NSIndexPath(forItem: headerIndex, inSection: 0)
+        let currentIndexPath = NSIndexPath(item: headerIndex, section: 0)
         
         if self.collectionViewContentOffsetX == 0.0 {
             self.collectionViewContentOffsetX = self.collectionView.contentOffset.x
         }
         
-        if let currentCell = self.collectionView.cellForItemAtIndexPath(currentIndexPath) as? TitleCell {
+        if let currentCell = self.collectionView.cellForItem(at: currentIndexPath as IndexPath) as? TitleCell {
             
             let distance = currentCell.frame.width
             let scrollRate = contentOffsetX / self.view.frame.width
@@ -155,26 +155,26 @@ public class KACyclePageView: UIViewController {
             self.collectionView.contentOffset.x = self.collectionViewContentOffsetX + scroll
             
             let nextIndex = contentOffsetX > 0 ? headerIndex + 1 : headerIndex - 1
-            let nextIndexPath = NSIndexPath(forItem: nextIndex, inSection: 0)
+            let nextIndexPath = NSIndexPath(item: nextIndex, section: 0)
 
-            guard let nextCell = collectionView.cellForItemAtIndexPath(nextIndexPath) as? TitleCell else {
+            guard let nextCell = collectionView.cellForItem(at: nextIndexPath as IndexPath) as? TitleCell else {
                 return
             }
             
             //update bar width
             bottomBarViewWidth.constant = currentCell.titleLabelWidthWithMargin + (nextCell.titleLabelWidthWithMargin - currentCell.titleLabelWidthWithMargin) * abs(scrollRate)
             
-            guard let currentColor = dataSource?.colorForCurrentTitle(), defaultColor = dataSource?.colorForDefaultTitle() else {
+            guard let currentColor = dataSource?.colorForCurrentTitle(), let defaultColor = dataSource?.colorForDefaultTitle() else {
                 return
             }
             
-            nextCell.titleLabel.textColor = colorForProgress(defaultColor, newColor: currentColor, progress: abs(scrollRate))
-            currentCell.titleLabel.textColor = colorForProgress(currentColor, newColor: defaultColor, progress: abs(scrollRate))
+            nextCell.titleLabel.textColor = colorForProgress(oldColor: defaultColor, newColor: currentColor, progress: abs(scrollRate))
+            currentCell.titleLabel.textColor = colorForProgress(oldColor: currentColor, newColor: defaultColor, progress: abs(scrollRate))
         }
     }
     
     private func colorForProgress(oldColor: UIColor, newColor: UIColor, progress: CGFloat) -> UIColor {
-        guard let old = oldColor.coreImageColor, new = newColor.coreImageColor else {
+        guard let old = oldColor.coreImageColor, let new = newColor.coreImageColor else {
             return oldColor
         }
         
@@ -192,15 +192,16 @@ public class KACyclePageView: UIViewController {
     private func moveBottomBar(toCell cell: TitleCell? = nil) {
         var targetCell: TitleCell? = cell
         if targetCell == nil {
-            targetCell = collectionView.cellForItemAtIndexPath(NSIndexPath(forItem: headerIndex, inSection: 0)) as? TitleCell
+            targetCell = collectionView.cellForItem(at: NSIndexPath(item: headerIndex, section: 0) as IndexPath) as? TitleCell
         }
         
         if targetCell == nil {
-            let cells = collectionView.visibleCells() as! [TitleCell]
+            let cells = collectionView.visibleCells as! [TitleCell]
+            
             
             let c = cells.filter {
-                if let indexPath = collectionView.indexPathForCell($0) {
-                    return pageIndexFromHeaderIndex(indexPath.item) == pageIndex
+                if let indexPath = collectionView.indexPath(for: $0) {
+                    return pageIndexFromHeaderIndex(index: indexPath.item) == pageIndex
                 }
                 
                 return false
@@ -213,10 +214,10 @@ public class KACyclePageView: UIViewController {
             return
         }
         
-        let rect = newCell.titleLabel.convertRect(newCell.titleLabel.bounds, toView: collectionView.superview)
+        let rect = newCell.titleLabel.convert(newCell.titleLabel.bounds, to: collectionView.superview)
     
-        bottomBarViewCenterH.active = false
-        bottomBarViewLeft.active = true
+        bottomBarViewCenterH.isActive = false
+        bottomBarViewLeft.isActive = true
         
         if rect.origin.x > collectionView.frame.width {
             bottomBarViewLeft.constant = collectionView.frame.width
@@ -241,9 +242,9 @@ public class KACyclePageView: UIViewController {
     
     private func scrollToPageIndex() {
         headerIndex = CountForCycle + pageIndex
-        let indexPath = NSIndexPath(forItem: headerIndex, inSection: 0)
+        let indexPath = NSIndexPath(item: headerIndex, section: 0)
         
-        collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: scrollPostition, animated: false)
+        collectionView.scrollToItem(at: indexPath as IndexPath, at: scrollPostition, animated: false)
     }
     
     // MARK: - UIScrollViewDelegate
@@ -254,7 +255,7 @@ public class KACyclePageView: UIViewController {
     
     public func scrollViewDidScroll(scrollView: UIScrollView) {
         
-        if scrollView.dragging {
+        if scrollView.isDragging {
             moveBottomBar()
         }
     }
@@ -264,23 +265,22 @@ public class KACyclePageView: UIViewController {
 // MARK: - UICollection
 
 extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout {
-    
-    public func collectionView(collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAtIndexPath indexPath: NSIndexPath) -> CGSize {
+    public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let width = cellWidth
         
-        return CGSizeMake(width, collectionView.frame.height)
+        return CGSize(width: width, height: collectionView.frame.height)
     }
     
-    public func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         return shouldCycle ? pageCount * CountForCycle * 2 : pageCount
     }
     
-    public func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCellWithReuseIdentifier("TitleCell", forIndexPath: indexPath) as! TitleCell
+    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "TitleCell", for: indexPath as IndexPath) as! TitleCell
         
-        let cycledIndex = pageIndexFromHeaderIndex(indexPath.item)
+        let cycledIndex = pageIndexFromHeaderIndex(index: indexPath.item)
         
-        let title = dataSource?.titleForPageAtIndex(cycledIndex)
+        let title = dataSource?.titleForPageAtIndex(index: cycledIndex)
         
         cell.titleLabel.text = title
         
@@ -292,20 +292,19 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
         
         return cell
     }
-
     
-    public func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
-        let newPageIndex = pageIndexFromHeaderIndex(indexPath.item)
+    public func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        let newPageIndex = pageIndexFromHeaderIndex(index: indexPath.item)
         
         if newPageIndex == pageIndex || pageViewController.dragging {
             return
         }
         
-        let direction: UIPageViewControllerNavigationDirection = indexPath.item > headerIndex ? .Forward : .Reverse
+        let direction: UIPageViewController.NavigationDirection = indexPath.item > headerIndex ? .forward : .reverse
         
-        pageViewController.displayControllerWithIndex(newPageIndex, direction: direction, animated: true)
-
-        if let visableCells = collectionView.visibleCells() as? [TitleCell] {
+        pageViewController.displayControllerWithIndex(index: newPageIndex, direction: direction, animated: true)
+        
+        if let visableCells = collectionView.visibleCells as? [TitleCell] {
             for cell in visableCells {
                 cell.titleLabel.textColor = dataSource?.colorForDefaultTitle()
             }
@@ -313,24 +312,24 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
         
         pageIndex = newPageIndex
         headerIndex = indexPath.item
-
-        bottomBarViewLeft.active = false
-        bottomBarViewCenterH.active = true
         
-        let nextCell = collectionView.cellForItemAtIndexPath(indexPath) as! TitleCell
+        bottomBarViewLeft.isActive = false
+        bottomBarViewCenterH.isActive = true
+        
+        let nextCell = collectionView.cellForItem(at: indexPath as IndexPath) as! TitleCell
         bottomBarViewWidth.constant = nextCell.titleLabelWidthWithMargin
         
         nextCell.titleLabel.textColor = dataSource?.colorForCurrentTitle()
         
-        UIView.animateWithDuration(0.3) {
+        UIView.animate(withDuration: 0.3) {
             self.view.layoutIfNeeded()
         }
-
-        collectionView.scrollToItemAtIndexPath(indexPath, atScrollPosition: .CenteredHorizontally, animated: true)
+        
+        collectionView.scrollToItem(at: indexPath as IndexPath, at: .centeredHorizontally, animated: true)
     }
     
-    public func collectionView(collectionView: UICollectionView, willDisplayCell cell: UICollectionViewCell, forItemAtIndexPath indexPath: NSIndexPath) {
-        let cycledIndex = pageIndexFromHeaderIndex(indexPath.item)
+    public func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        let cycledIndex = pageIndexFromHeaderIndex(index: indexPath.item)
         
         (cell as? TitleCell)?.titleLabel.textColor = cycledIndex == pageIndex ? dataSource?.colorForCurrentTitle() : dataSource?.colorForDefaultTitle()
     }
@@ -342,11 +341,11 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
 extension KACyclePageView: KAPageViewControllerDelegate {
     
     func WillBeginDragging() {
-        collectionView.scrollEnabled = false
+        collectionView.isScrollEnabled = false
         
-        if !bottomBarViewCenterH.active {
-            bottomBarViewLeft.active = false
-            bottomBarViewCenterH.active = true
+        if !bottomBarViewCenterH.isActive {
+            bottomBarViewLeft.isActive = false
+            bottomBarViewCenterH.isActive = true
         }
         
         if needScrollToCenter {
@@ -359,16 +358,16 @@ extension KACyclePageView: KAPageViewControllerDelegate {
     func didEndDragging() {
         print(#function)
         
-        collectionView.scrollEnabled = true
+        collectionView.isScrollEnabled = true
     }
     
     func didChangeToIndex(index: Int) {
-        updateIndex(index)
+        updateIndex(index: index)
     }
     
     func didScrolledWithContentOffsetX(x: CGFloat) {
         if shouldCycle {
-            scrollWithContentOffsetX(x)
+            scrollWithContentOffsetX(contentOffsetX: x)
         } else {
 //            updateIndicatorView(x)
         }

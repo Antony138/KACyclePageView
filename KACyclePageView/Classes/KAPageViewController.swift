@@ -29,9 +29,9 @@ class KAPageViewController: UIPageViewController {
     
     var dragging: Bool {
         get {
-            let scrollView = view.subviews.flatMap { $0 as? UIScrollView }.first
+            let scrollView = view.subviews.compactMap { $0 as? UIScrollView }.first
             if let scrollView = scrollView {
-                return scrollView.dragging
+                return scrollView.isDragging
             }
             return false
         }
@@ -47,28 +47,28 @@ class KAPageViewController: UIPageViewController {
         
         setupScrollView()
         
-        guard let firstVC = pageDataSource?.viewControllerForPageAtIndex(currentIndex) else {
+        guard let firstVC = pageDataSource?.viewControllerForPageAtIndex(index: currentIndex) else {
             return
         }
 
         firstVC.kaPageIndex = currentIndex
 
-        setViewControllers([firstVC], direction: .Forward, animated: false, completion: nil)
+        setViewControllers([firstVC], direction: .forward, animated: false, completion: nil)
     }
 
     
     private func setupScrollView() {
-        let scrollView = view.subviews.flatMap { $0 as? UIScrollView }.first
+        let scrollView = view.subviews.compactMap { $0 as? UIScrollView }.first
         scrollView?.scrollsToTop = false
         scrollView?.delegate = self
     }
     
-    func displayControllerWithIndex(index: Int, direction: UIPageViewControllerNavigationDirection, animated: Bool) {
+    func displayControllerWithIndex(index: Int, direction: UIPageViewController.NavigationDirection, animated: Bool) {
         
         currentIndex = index
         shouldScrollHeaderView = false
         
-        guard let vc = pageDataSource?.viewControllerForPageAtIndex(index) else {
+        guard let vc = pageDataSource?.viewControllerForPageAtIndex(index: index) else {
             return
         }
         
@@ -100,7 +100,7 @@ class KAPageViewController: UIPageViewController {
         }
         
         if index >= 0 && index < pageCount {
-            let vc = pageDataSource?.viewControllerForPageAtIndex(index)
+            let vc = pageDataSource?.viewControllerForPageAtIndex(index: index)
             vc?.kaPageIndex = index
             
             return vc
@@ -113,25 +113,24 @@ class KAPageViewController: UIPageViewController {
 // MARK: - UIScrollViewDelegate
 
 extension KAPageViewController: UIScrollViewDelegate {
-    
-    func scrollViewWillBeginDragging(scrollView: UIScrollView) {
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         pageDelegate?.WillBeginDragging()
     }
     
-    func scrollViewDidScroll(scrollView: UIScrollView) {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if shouldScrollHeaderView {
             let scrollOffsetX = scrollView.contentOffset.x - view.frame.width
             
-            pageDelegate?.didScrolledWithContentOffsetX(scrollOffsetX)
+            pageDelegate?.didScrolledWithContentOffsetX(x: scrollOffsetX)
         }
-
     }
     
-    func scrollViewDidEndDecelerating(scrollView: UIScrollView) {
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
         pageDelegate?.didEndDragging()
     }
     
-    func scrollViewDidEndDragging(scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
         if !decelerate {
             pageDelegate?.didEndDragging()
         }
@@ -142,22 +141,22 @@ extension KAPageViewController: UIScrollViewDelegate {
 
 extension KAPageViewController: UIPageViewControllerDataSource, UIPageViewControllerDelegate {
     
-    func pageViewController(pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
+    func pageViewController(_ pageViewController: UIPageViewController, didFinishAnimating finished: Bool, previousViewControllers: [UIViewController], transitionCompleted completed: Bool) {
         guard let index = viewControllers?.first?.kaPageIndex else {
             return
         }
         
         currentIndex = index
         
-        pageDelegate?.didChangeToIndex(index)
+        pageDelegate?.didChangeToIndex(index: index)
     }
     
-    func pageViewController(pageViewController: UIPageViewController, viewControllerAfterViewController viewController: UIViewController) -> UIViewController? {
-        return nextViewController(viewController, isAfter: true)
+    func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+        return nextViewController(current: viewController, isAfter: true)
     }
     
-    func pageViewController(pageViewController: UIPageViewController, viewControllerBeforeViewController viewController: UIViewController) -> UIViewController? {
-        return nextViewController(viewController, isAfter: false)
+    func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+        return nextViewController(current: viewController, isAfter: false)
     }
 
 }
