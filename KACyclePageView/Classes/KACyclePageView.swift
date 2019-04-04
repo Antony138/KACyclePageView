@@ -52,7 +52,7 @@ public class KACyclePageView: UIViewController {
     private var shouldCycle: Bool {
         get {
             //TODO: can be false
-            return true
+            return false
         }
     }
     
@@ -103,7 +103,11 @@ public class KACyclePageView: UIViewController {
         
         let indexPath = NSIndexPath(item: headerIndex, section: 0)
         
-        collectionView.scrollToItem(at: indexPath as IndexPath, at: scrollPostition, animated: false)
+        if shouldCycle {
+            collectionView.scrollToItem(at: indexPath as IndexPath, at: scrollPostition, animated: false)
+        } else {
+            
+        }
     }
     
     // MARK: - Navigation
@@ -126,7 +130,12 @@ public class KACyclePageView: UIViewController {
 
             let indexPath = NSIndexPath(item: headerIndex, section: 0)
 
-            collectionView.scrollToItem(at: indexPath as IndexPath, at: .centeredHorizontally, animated: false)
+            if shouldCycle {
+                collectionView.scrollToItem(at: indexPath as IndexPath, at: .centeredHorizontally, animated: false)
+            } else {
+                
+            }
+            
             collectionView.reloadData()
             
             collectionViewContentOffsetX = 0.0
@@ -244,7 +253,11 @@ public class KACyclePageView: UIViewController {
         headerIndex = CountForCycle + pageIndex
         let indexPath = NSIndexPath(item: headerIndex, section: 0)
         
-        collectionView.scrollToItem(at: indexPath as IndexPath, at: scrollPostition, animated: false)
+        if shouldCycle {
+            collectionView.scrollToItem(at: indexPath as IndexPath, at: scrollPostition, animated: false)
+        } else {
+            
+        }
     }
     
     // MARK: - UIScrollViewDelegate
@@ -280,7 +293,9 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
         
         let cycledIndex = pageIndexFromHeaderIndex(index: indexPath.item)
         
-        let title = dataSource?.titleForPageAtIndex(index: cycledIndex)
+        let titleIndex = shouldCycle ? cycledIndex : indexPath.item
+        
+        let title = dataSource?.titleForPageAtIndex(index: titleIndex)
         
         cell.titleLabel.text = title
         
@@ -325,7 +340,11 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
             self.view.layoutIfNeeded()
         }
         
-        collectionView.scrollToItem(at: indexPath as IndexPath, at: .centeredHorizontally, animated: true)
+        if shouldCycle {
+            collectionView.scrollToItem(at: indexPath as IndexPath, at: .centeredHorizontally, animated: true)
+        } else {
+            
+        }
     }
     
     public func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
