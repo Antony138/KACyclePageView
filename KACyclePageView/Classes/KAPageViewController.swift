@@ -19,6 +19,7 @@ protocol KAPageViewControllerDelegate {
 
 class KAPageViewController: UIPageViewController {
 
+    open var shouldCycle: Bool = false
     
     var pageCount = 0
     
@@ -93,10 +94,12 @@ class KAPageViewController: UIPageViewController {
         
         index = isAfter ? index + 1 : index - 1
         
-        if index < 0 {
-            index = pageCount - 1
-        } else if index == pageCount {
-            index = 0
+        if shouldCycle {
+            if index < 0 {
+                index = pageCount - 1
+            } else if index == pageCount {
+                index = 0
+            }
         }
         
         if index >= 0 && index < pageCount {
