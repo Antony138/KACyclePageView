@@ -29,10 +29,18 @@ private struct UX {
 public class KACyclePageView: UIViewController {
 
     @IBOutlet weak var collectionView: UICollectionView!
-    @IBOutlet weak var bottomBarView: UIView!
-    @IBOutlet weak var bottomBarViewWidth: NSLayoutConstraint!
-    @IBOutlet var bottomBarViewCenterH: NSLayoutConstraint!
-    @IBOutlet var bottomBarViewLeft: NSLayoutConstraint!
+    open lazy var selectedBar: UIView = { [unowned self] in
+        let bar  = UIView(frame: CGRect(x: 0, y: collectionView.frame.size.height - CGFloat(self.selectedBarHeight), width: 0, height: CGFloat(self.selectedBarHeight)))
+        bar.layer.zPosition = 9999
+        bar.backgroundColor = .black
+        return bar
+        }()
+    
+    internal var selectedBarHeight: CGFloat = 4 {
+        didSet {
+            updateSelectedBarYPosition()
+        }
+    }
     
     private var pageViewController: KAPageViewController!
     
@@ -51,7 +59,6 @@ public class KACyclePageView: UIViewController {
     
     private var shouldCycle: Bool {
         get {
-            //TODO: can be false
             return false
         }
     }
@@ -91,11 +98,16 @@ public class KACyclePageView: UIViewController {
         return vc
     }
     
+    private func updateSelectedBarYPosition() {
+        var selectedBarFrame = selectedBar.frame
+        selectedBarFrame.origin.y = collectionView.frame.size.height - selectedBarHeight
+        selectedBarFrame.size.height = selectedBarHeight
+        selectedBar.frame = selectedBarFrame
+    }
+    
     override public func viewDidLoad() {
         super.viewDidLoad()
-        
-        bottomBarViewLeft.isActive = false
-        bottomBarViewCenterH.isActive = true
+        collectionView.addSubview(selectedBar)
     }
 
     override public func viewDidAppear(_ animated: Bool) {
@@ -171,7 +183,6 @@ public class KACyclePageView: UIViewController {
             }
             
             //update bar width
-            bottomBarViewWidth.constant = currentCell.titleLabelWidthWithMargin + (nextCell.titleLabelWidthWithMargin - currentCell.titleLabelWidthWithMargin) * abs(scrollRate)
             
             guard let currentColor = dataSource?.colorForCurrentTitle(), let defaultColor = dataSource?.colorForDefaultTitle() else {
                 return
@@ -217,24 +228,6 @@ public class KACyclePageView: UIViewController {
             }
             
             targetCell = c.first
-        }
-        
-        guard let newCell = targetCell else {
-            return
-        }
-        
-        let rect = newCell.titleLabel.convert(newCell.titleLabel.bounds, to: collectionView.superview)
-    
-        bottomBarViewCenterH.isActive = false
-        bottomBarViewLeft.isActive = true
-        
-        if rect.origin.x > collectionView.frame.width {
-            bottomBarViewLeft.constant = collectionView.frame.width
-        } else if rect.origin.x < -cellWidth {
-            bottomBarViewLeft.constant = -cellWidth
-        } else {
-            
-            bottomBarViewLeft.constant = rect.origin.x - 8
         }
     }
 
@@ -301,7 +294,6 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
         
         if needUpdateBottomBarViewWidth && cycledIndex == pageIndex {
             cell.titleLabel.sizeToFit()
-            bottomBarViewWidth.constant = cell.titleLabel.frame.width + 2 * UX.labelMargin
             needUpdateBottomBarViewWidth = false
         }
         
@@ -328,11 +320,7 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
         pageIndex = newPageIndex
         headerIndex = indexPath.item
         
-        bottomBarViewLeft.isActive = false
-        bottomBarViewCenterH.isActive = true
-        
         let nextCell = collectionView.cellForItem(at: indexPath as IndexPath) as! TitleCell
-        bottomBarViewWidth.constant = nextCell.titleLabelWidthWithMargin
         
         nextCell.titleLabel.textColor = dataSource?.colorForCurrentTitle()
         
@@ -358,14 +346,8 @@ extension KACyclePageView: UICollectionViewDataSource, UICollectionViewDelegate,
 // MARK: - KAPageViewControllerDelegate
 
 extension KACyclePageView: KAPageViewControllerDelegate {
-    
     func WillBeginDragging() {
         collectionView.isScrollEnabled = false
-        
-        if !bottomBarViewCenterH.isActive {
-            bottomBarViewLeft.isActive = false
-            bottomBarViewCenterH.isActive = true
-        }
         
         if needScrollToCenter {
             scrollToPageIndex()
@@ -384,13 +366,57 @@ extension KACyclePageView: KAPageViewControllerDelegate {
         updateIndex(index: index)
     }
     
-    func didScrolledWithContentOffsetX(x: CGFloat, progressPercentage: CGFloat) {
+    func didScrolledWithContentOffsetX(x: CGFloat, fromIndex: Int, toIndex: Int, progressPercentage: CGFloat) {
         if shouldCycle {
             scrollWithContentOffsetX(contentOffsetX: x)
         } else {
-            //            updateIndicatorView(x)
-            print("progressPercentage: \(progressPercentage)")  
+            // Reference: XLPagerTabStrip
+//            selectedIndex = progressPercentage > 0.5 ? toIndex : fromIndex
+            
+            guard let numberOfItems = dataSource?.numberOfPages() else { return }
+            let fromFrame = collectionView.layoutAttributesForItem(at: IndexPath(item: fromIndex, section: 0))!.frame
+            
+            var toFrame: CGRect
+            
+            if toIndex < 0 || toIndex > numberOfItems - 1 {
+                if toIndex < 0 {
+                    let cellAtts = collectionView.layoutAttributesForItem(at: IndexPath(item: 0, section: 0))
+                    toFrame = cellAtts!.frame.offsetBy(dx: -cellAtts!.frame.size.width, dy: 0)
+                } else {
+                    let cellAtts = collectionView.layoutAttributesForItem(at: IndexPath(item: (numberOfItems - 1), section: 0))
+                    toFrame = cellAtts!.frame.offsetBy(dx: cellAtts!.frame.size.width, dy: 0)
+                }
+            } else {
+                toFrame = collectionView.layoutAttributesForItem(at: IndexPath(item: toIndex, section: 0))!.frame
+            }
+            
+            var targetFrame = fromFrame
+            targetFrame.size.height = selectedBar.frame.size.height
+            targetFrame.size.width += (toFrame.size.width - fromFrame.size.width) * progressPercentage
+            targetFrame.origin.x += (toFrame.origin.x - fromFrame.origin.x) * progressPercentage
+            selectedBar.frame = CGRect(x: targetFrame.origin.x, y: selectedBar.frame.origin.y, width: targetFrame.size.width, height: selectedBar.frame.size.height)
+            
+            var targetContentOffset: CGFloat = 0.0
+//            if contentSize.width > frame.size.width {
+                let toContentOffset = contentOffsetForCell(withFrame: toFrame, andIndex: toIndex)
+                let fromContentOffset = contentOffsetForCell(withFrame: fromFrame, andIndex: fromIndex)
+                
+                targetContentOffset = fromContentOffset + ((toContentOffset - fromContentOffset) * progressPercentage)
+//            }
+            
+            collectionView.setContentOffset(CGPoint(x: targetContentOffset, y: 0), animated: false)
         }
+    }
+    
+    private func contentOffsetForCell(withFrame cellFrame: CGRect, andIndex index: Int) -> CGFloat {
+        var alignmentOffset: CGFloat = 0.0
+        
+        alignmentOffset = (collectionView.frame.size.width - cellFrame.size.width) * 0.5
+        
+        var contentOffset = cellFrame.origin.x - alignmentOffset
+        contentOffset = max(0, contentOffset)
+        contentOffset = min(collectionView.contentSize.width - collectionView.frame.size.width, contentOffset)
+        return contentOffset
     }
 }
 

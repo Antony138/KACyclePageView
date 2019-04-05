@@ -13,7 +13,7 @@ protocol KAPageViewControllerDelegate {
     func WillBeginDragging()
     func didEndDragging()
     func didChangeToIndex(index: Int)
-    func didScrolledWithContentOffsetX(x: CGFloat, progressPercentage: CGFloat)
+    func didScrolledWithContentOffsetX(x: CGFloat, fromIndex: Int, toIndex: Int, progressPercentage: CGFloat)
 
 }
 
@@ -24,6 +24,8 @@ class KAPageViewController: UIPageViewController {
     var pageCount = 0
     
     private var currentIndex = 0
+    
+    private var nextIndex = 0
     
     var pageDelegate: KAPageViewControllerDelegate?
     var pageDataSource: KACyclePageViewDataSource?
@@ -94,6 +96,8 @@ class KAPageViewController: UIPageViewController {
         
         index = isAfter ? index + 1 : index - 1
         
+        nextIndex = index
+
         if shouldCycle {
             if index < 0 {
                 index = pageCount - 1
@@ -105,12 +109,10 @@ class KAPageViewController: UIPageViewController {
         if index >= 0 && index < pageCount {
             let vc = pageDataSource?.viewControllerForPageAtIndex(index: index)
             vc?.kaPageIndex = index
-            
             return vc
         }
         return nil
     }
-    
 }
 
 // MARK: - UIScrollViewDelegate
@@ -122,11 +124,28 @@ extension KAPageViewController: UIScrollViewDelegate {
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if scrollView.contentOffset.x == view.frame.width {
+            return
+        }
+
         if shouldScrollHeaderView {
             let scrollOffsetX = scrollView.contentOffset.x - view.frame.width
+            
+            var fromIndex = currentIndex
+            var toIndex = currentIndex
+            if scrollOffsetX > 0 {
+                fromIndex = currentIndex
+                toIndex = fromIndex + 1
+            } else {
+                fromIndex = currentIndex
+                toIndex = fromIndex - 1
+            }
+            
             let progressPercentage: CGFloat = abs(scrollOffsetX) / view.frame.size.width
             pageDelegate?.didScrolledWithContentOffsetX(x: scrollOffsetX,
-                                                        progressPercentage: progressPercentage == 0.0 ? 1.0 : progressPercentage)
+                                                        fromIndex: fromIndex,
+                                                        toIndex: toIndex,
+                                                        progressPercentage: progressPercentage)
         }
     }
     
@@ -162,7 +181,6 @@ extension KAPageViewController: UIPageViewControllerDataSource, UIPageViewContro
     func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
         return nextViewController(current: viewController, isAfter: false)
     }
-
 }
 
 private var kaPageIndexAssociationKey = 0
