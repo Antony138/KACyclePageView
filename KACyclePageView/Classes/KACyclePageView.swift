@@ -384,14 +384,14 @@ extension KACyclePageView: KAPageViewControllerDelegate {
         updateIndex(index: index)
     }
     
-    func didScrolledWithContentOffsetX(x: CGFloat) {
+    func didScrolledWithContentOffsetX(x: CGFloat, progressPercentage: CGFloat) {
         if shouldCycle {
             scrollWithContentOffsetX(contentOffsetX: x)
         } else {
-//            updateIndicatorView(x)
+            //            updateIndicatorView(x)
+            print("progressPercentage: \(progressPercentage)")  
         }
     }
-
 }
 
 // MARK: - TitleCell

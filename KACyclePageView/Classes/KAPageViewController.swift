@@ -13,7 +13,7 @@ protocol KAPageViewControllerDelegate {
     func WillBeginDragging()
     func didEndDragging()
     func didChangeToIndex(index: Int)
-    func didScrolledWithContentOffsetX(x: CGFloat)
+    func didScrolledWithContentOffsetX(x: CGFloat, progressPercentage: CGFloat)
 
 }
 
@@ -124,8 +124,9 @@ extension KAPageViewController: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         if shouldScrollHeaderView {
             let scrollOffsetX = scrollView.contentOffset.x - view.frame.width
-            
-            pageDelegate?.didScrolledWithContentOffsetX(x: scrollOffsetX)
+            let progressPercentage: CGFloat = abs(scrollOffsetX) / view.frame.size.width
+            pageDelegate?.didScrolledWithContentOffsetX(x: scrollOffsetX,
+                                                        progressPercentage: progressPercentage == 0.0 ? 1.0 : progressPercentage)
         }
     }
     
